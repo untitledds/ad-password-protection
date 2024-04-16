@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Lithnet.ActiveDirectory.PasswordProtection
 {
@@ -16,16 +11,24 @@ namespace Lithnet.ActiveDirectory.PasswordProtection
 
         void RemoveFromStore(byte[] hash, StoreType storeType);
 
-        void RemoveFromStore(HashSet<byte[]> hashes, StoreType storeType, CancellationToken ct, OperationProgress progress);
+        void RemoveFromStore(HashSet<byte[]> hashes, StoreType storeType, OperationProgress progress, CancellationToken ct);
 
         void AddToStore(string password, StoreType storeType);
 
         void AddToStore(byte[] hash, StoreType storeType);
 
-        void AddToStore(HashSet<byte[]> hashes, StoreType storeType, CancellationToken ct, OperationProgress progress);
+        void AddToStore(HashSet<byte[]> hashes, StoreType storeType, OperationProgress progress, CancellationToken ct);
 
         bool IsInStore(string password, StoreType storeType);
 
         bool IsInStore(byte[] hash, StoreType storeType);
+
+        string GetStoreMetadata(string metadataItemName);
+
+        void SetStoreMetadata(string metadataItemName, string data);
+
+        void DeleteStoreMetadata(string metadataItemName);
+
+        string GetPath();
     }
 }

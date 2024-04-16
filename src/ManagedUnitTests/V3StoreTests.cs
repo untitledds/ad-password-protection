@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Text;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Lithnet.ActiveDirectory.PasswordProtection;
 using System.Linq;
 using System.Threading;
+using Lithnet.ActiveDirectory.PasswordProtection;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ManagedUnitTests
 {
@@ -22,6 +20,15 @@ namespace ManagedUnitTests
             this.StoredHashSize = 14;
         }
 
+        [TestMethod]
+        public void TestHibp()
+        {
+            HibpDownloader downloader = new HibpDownloader(this.Store);
+            var progress = new OperationProgress();
+
+            downloader.Execute(progress, 1, CancellationToken.None);
+        }
+        
         protected override string GetFileNameFromHash(string hash)
         {
             return $"{hash.Substring(0, 4)}.db";
@@ -35,7 +42,7 @@ namespace ManagedUnitTests
         [TestMethod]
         public void TestGoodHashTypes()
         {
-            Lithnet.ActiveDirectory.PasswordProtection.Store.ImportHexHashesFromSortedFile(this.Store, StoreType.Password, @"D:\pwnedpwds\raw\test-good-hash.txt", new CancellationToken());
+            Lithnet.ActiveDirectory.PasswordProtection.Store.ImportHexHashesFromSortedFile(this.Store, StoreType.Password, @"TestData\test-good-hash.txt", new CancellationToken());
         }
 
         [TestMethod]
@@ -43,7 +50,7 @@ namespace ManagedUnitTests
         {
             try
             {
-                Lithnet.ActiveDirectory.PasswordProtection.Store.ImportHexHashesFromSortedFile(this.Store, StoreType.Password, @"D:\pwnedpwds\raw\test-hash-too-long.txt", new CancellationToken());
+                Lithnet.ActiveDirectory.PasswordProtection.Store.ImportHexHashesFromSortedFile(this.Store, StoreType.Password, @"TestData\test-hash-too-long.txt", new CancellationToken());
                 Assert.Fail("Did not throw the expected exception");
             }
             catch (InvalidDataException)
@@ -56,7 +63,7 @@ namespace ManagedUnitTests
         {
             try
             {
-                Lithnet.ActiveDirectory.PasswordProtection.Store.ImportHexHashesFromSortedFile(this.Store, StoreType.Password, @"D:\pwnedpwds\raw\test-hash-too-short.txt", new CancellationToken());
+                Lithnet.ActiveDirectory.PasswordProtection.Store.ImportHexHashesFromSortedFile(this.Store, StoreType.Password, @"TestData\test-hash-too-short.txt", new CancellationToken());
                 Assert.Fail("Did not throw the expected exception");
             }
             catch (InvalidDataException)
@@ -67,7 +74,7 @@ namespace ManagedUnitTests
         [TestMethod]
         public void TestAddNormalizedWordToStore()
         {
-            string password = "password"; //8846F7EAEE8FB117AD06BDD830B7586C
+            const string password = "password"; //8846F7EAEE8FB117AD06BDD830B7586C
 
             this.Store.AddToStore(password, StoreType.Word);
 
@@ -85,7 +92,7 @@ namespace ManagedUnitTests
         [TestMethod]
         public void AddEnglishDictionaryToNewStoreAndValidate()
         {
-            string file = @"D:\pwnedpwds\raw\english.txt";
+            const string file = @"TestData\english.txt";
             string path = Path.Combine(TestHelpers.TestStorePath, Guid.NewGuid().ToString());
             Directory.CreateDirectory(path);
             CancellationToken ct = new CancellationToken();
@@ -101,7 +108,7 @@ namespace ManagedUnitTests
                     {
                         string line = reader.ReadLine();
 
-                        if (line == null || line.Length <= 0)
+                        if (string.IsNullOrEmpty(line))
                         {
                             continue;
                         }
@@ -125,7 +132,7 @@ namespace ManagedUnitTests
         [TestMethod]
         public void TestAddPasswordToStore()
         {
-            string password = "password"; //8846F7EAEE8FB117AD06BDD830B7586C
+            const string password = "password"; //8846F7EAEE8FB117AD06BDD830B7586C
 
             this.Store.AddToStore(password, StoreType.Password);
 
@@ -142,7 +149,7 @@ namespace ManagedUnitTests
         [TestMethod]
         public void TestRemovePasswordFromStore()
         {
-            string password = "password"; //8846F7EAEE8FB117AD06BDD830B7586C
+            const string password = "password"; //8846F7EAEE8FB117AD06BDD830B7586C
 
             this.Store.AddToStore(password, StoreType.Password);
 
@@ -159,7 +166,7 @@ namespace ManagedUnitTests
         [TestMethod]
         public void TestRemoveWordFromStore()
         {
-            string password = "password"; //8846F7EAEE8FB117AD06BDD830B7586C
+            const string password = "password"; //8846F7EAEE8FB117AD06BDD830B7586C
 
             this.Store.AddToStore(password, StoreType.Word);
 
@@ -176,7 +183,7 @@ namespace ManagedUnitTests
         [TestMethod]
         public void TestRemoveNormalizedWordFromStore()
         {
-            string password = "password"; //8846F7EAEE8FB117AD06BDD830B7586C
+            const string password = "password"; //8846F7EAEE8FB117AD06BDD830B7586C
 
             this.Store.AddToStore(password, StoreType.Word);
 
@@ -193,7 +200,7 @@ namespace ManagedUnitTests
         [TestMethod]
         public void TestAddHashToStore()
         {
-            string hash = "8846F7EAEE8FB117AD06BDD830B7586C";
+            const string hash = "8846F7EAEE8FB117AD06BDD830B7586C";
             byte[] hashBytes = hash.HexStringToBytes();
 
             this.Store.AddToStore(hashBytes, StoreType.Password);
@@ -227,7 +234,7 @@ namespace ManagedUnitTests
 
             OperationProgress progress = new OperationProgress();
 
-            this.Store.AddToStore(new HashSet<byte[]>(hashBytes, new ByteArrayComparer()), StoreType.Password, ct, progress);
+            this.Store.AddToStore(new HashSet<byte[]>(hashBytes, new ByteArrayComparer()), StoreType.Password, progress, ct);
 
             Assert.AreEqual(0, progress.HashesDiscarded);
             Assert.AreEqual(hashes.Length, progress.HashesAdded);
@@ -235,12 +242,12 @@ namespace ManagedUnitTests
             string rawFile = Path.Combine(this.Store.StorePathPasswordStore, this.GetFileNameFromHash(hashes[0]));
             TestHelpers.AssertFileIsExpectedSize(rawFile, this.StoredHashSize * hashes.Length);
 
-            this.Store.AddToStore(new HashSet<byte[]>(hashBytes, new ByteArrayComparer()), StoreType.Password, ct, new OperationProgress());
+            this.Store.AddToStore(new HashSet<byte[]>(hashBytes, new ByteArrayComparer()), StoreType.Password, new OperationProgress(), ct);
             TestHelpers.AssertFileIsExpectedSize(rawFile, this.StoredHashSize * hashes.Length);
         }
 
         [TestMethod]
-        public void TestAllHashesAreFonudInStore()
+        public void TestAllHashesAreFoundInStore()
         {
             string[] hashes = new string[]
             {
@@ -259,7 +266,7 @@ namespace ManagedUnitTests
             List<byte[]> hashBytes = hashes.Select(t => t.HexStringToBytes()).ToList();
             CancellationToken ct;
 
-            this.Store.AddToStore(new HashSet<byte[]>(hashBytes, new ByteArrayComparer()), StoreType.Password, ct, new OperationProgress());
+            this.Store.AddToStore(new HashSet<byte[]>(hashBytes, new ByteArrayComparer()), StoreType.Password, new OperationProgress(), ct);
 
             foreach (string hash in hashes)
             {
@@ -299,7 +306,7 @@ namespace ManagedUnitTests
             List<byte[]> hashBytes = hashes.Select(t => t.HexStringToBytes()).Reverse().ToList();
             OperationProgress progress = new OperationProgress();
             CancellationToken ct;
-            this.Store.AddToStore(new HashSet<byte[]>(hashBytes, new ByteArrayComparer()), StoreType.Password, ct, progress);
+            this.Store.AddToStore(new HashSet<byte[]>(hashBytes, new ByteArrayComparer()), StoreType.Password, progress, ct);
 
             Assert.AreEqual(0, progress.HashesDiscarded);
             Assert.AreEqual(hashes.Length, progress.HashesAdded);
@@ -332,7 +339,7 @@ namespace ManagedUnitTests
             OperationProgress progress = new OperationProgress();
             CancellationToken ct;
 
-            this.Store.AddToStore(hashBytes, StoreType.Password, ct, progress);
+            this.Store.AddToStore(hashBytes, StoreType.Password, progress, ct);
 
             Assert.AreEqual(0, progress.HashesDiscarded);
             Assert.AreEqual(hashes.Length, progress.HashesAdded);
@@ -360,7 +367,7 @@ namespace ManagedUnitTests
             HashSet<byte[]> hashBytes = new HashSet<byte[]>(hashes.Reverse().Select(t => t.HexStringToBytes()), new ByteArrayComparer());
             OperationProgress progress = new OperationProgress();
             CancellationToken ct;
-            this.Store.AddToStore(hashBytes, StoreType.Password, ct, progress);
+            this.Store.AddToStore(hashBytes, StoreType.Password, progress, ct);
 
             Assert.AreEqual(0, progress.HashesDiscarded);
             Assert.AreEqual(hashes.Length, progress.HashesAdded);
@@ -369,7 +376,6 @@ namespace ManagedUnitTests
 
             this.Store.AddToStore("00000000000000000000000000000006".HexStringToBytes(), StoreType.Password);
             this.Store.AddToStore("00000000000000000000000000000007".HexStringToBytes(), StoreType.Password);
-
 
             string[] expectedHashes = new string[]
             {

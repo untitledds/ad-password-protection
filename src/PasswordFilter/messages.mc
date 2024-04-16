@@ -72,8 +72,9 @@ Severity=Error
 Facility=Runtime
 SymbolicName=MSG_STOREERROR
 Language=English
-There was a problem opening the store file. Check that the store folder exists and is accessible
+There was a problem opening the store file. Check that the store folder exists and is accessible.
 Error code: %1
+Path: %2
 .
 
 MessageId=0x2001

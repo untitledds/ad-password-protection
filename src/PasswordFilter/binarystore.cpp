@@ -5,7 +5,6 @@
 #include <sstream>
 #include <iomanip>
 #include "utils.h"
-#include <atlconv.h>
 #include "SecureArrayT.h"
 #include "eventlog.h"
 #include "messages.h"
@@ -31,7 +30,7 @@ binarystore::binarystore(const std::wstring& storeBasePath, const std::wstring& 
 		if (!CreateDirectory(storeBasePath.c_str(), NULL))
 		{
 			const DWORD error = GetLastError();
-			eventlog::getInstance().logw(EVENTLOG_ERROR_TYPE, MSG_STOREERROR, 1, std::to_wstring(error).c_str());
+			eventlog::getInstance().logw(EVENTLOG_ERROR_TYPE, MSG_STOREERROR, 2, std::to_wstring(error).c_str(), storeBasePath.c_str());
 			throw std::system_error(error, std::system_category(), "Failed to create the store folder");
 		}
 	}

@@ -1,14 +1,14 @@
 ﻿using System;
+using System.DirectoryServices.ActiveDirectory;
 using System.Management.Automation;
 using System.Security.Principal;
-using Lithnet.ActiveDirectory.PasswordProtection;
-using DSInternals.Replication;
 using DSInternals.Common.Data;
+using DSInternals.Replication;
 
 namespace Lithnet.ActiveDirectory.PasswordProtection.PowerShell
 {
     [Cmdlet(VerbsDiagnostic.Test, "IsADUserPasswordCompromised", DefaultParameterSetName = "AccountName")]
-    public class TestIsADUserPasswordCompromised : PSCmdlet
+    public class TestIsADUserPasswordCompromised : PasswordProtectionCmdletBase
     {
         [Parameter(Mandatory = true, Position = 1, ValueFromPipeline = false, ParameterSetName = "AccountName"), ValidateNotNullOrEmpty]
         public string AccountName { get; set; }
@@ -32,12 +32,28 @@ namespace Lithnet.ActiveDirectory.PasswordProtection.PowerShell
         public SwitchParameter OutputCompromisedHashOnMatch { get; set; }
 
         private DirectoryReplicationClient client;
+        private bool disposedValue;
 
         protected override void BeginProcessing()
         {
             Global.OpenExistingDefaultOrThrow();
             base.BeginProcessing();
-            this.client = new DirectoryReplicationClient(this.Server ?? Environment.GetEnvironmentVariable("UserDNSDomain"), RpcProtocol.TCP, this.Credential?.GetNetworkCredential());
+
+            string server = this.Server;
+
+            if (server == null)
+            {
+                if (NativeMethods.IsDc())
+                {
+                    server = Environment.MachineName;
+                }
+                else
+                {
+                    server = Domain.GetComputerDomain().FindDomainController(LocatorOptions.WriteableRequired).Name;
+                }
+            }
+
+            this.client = new DirectoryReplicationClient(server, RpcProtocol.TCP, this.Credential?.GetNetworkCredential());
         }
 
         protected override void ProcessRecord()
@@ -47,16 +63,13 @@ namespace Lithnet.ActiveDirectory.PasswordProtection.PowerShell
             switch (this.ParameterSetName)
             {
                 case "AccountName":
-                    if (this.DomainName == null)
-                    {
-                        this.DomainName = Environment.GetEnvironmentVariable("UserDomain");
-                    }
+                    this.DomainName ??= Environment.GetEnvironmentVariable("UserDomain");
 
                     account = this.client.GetAccount(new NTAccount(this.DomainName, this.AccountName));
                     break;
 
                 case "Upn":
-                    account = this.client.GetAccountByUPN(this.Upn);
+                    account = this.client.GetAccount(new NTAccount(this.Upn));
                     break;
 
                 case "Sid":
@@ -91,6 +104,21 @@ namespace Lithnet.ActiveDirectory.PasswordProtection.PowerShell
             {
                 this.WriteObject(result);
             }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!this.disposedValue)
+            {
+                if (disposing)
+                {
+                    this.client.Dispose();
+                }
+
+                this.disposedValue = true;
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

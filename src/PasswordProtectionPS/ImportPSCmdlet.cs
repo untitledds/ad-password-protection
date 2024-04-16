@@ -1,21 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Management.Automation;
-using System.Text;
-using System.Threading.Tasks;
-using Lithnet.ActiveDirectory.PasswordProtection;
 
 namespace Lithnet.ActiveDirectory.PasswordProtection.PowerShell
 {
-    public abstract class ImportPSCmdlet : PSCmdlet
+    public abstract class ImportPSCmdlet : PasswordProtectionCmdletBase
     {
-        protected internal OperationProgress Progress;
+        private protected OperationProgress Progress;
 
         private ProgressRecord overallRecord;
-        private ProgressRecord fileReadProgressRecord = null;
-        private ProgressRecord consolidateStoreProgressRecord = null;
-        private ProgressRecord flushStoreProgressRecord = null;
+        private ProgressRecord fileReadProgressRecord;
+        private ProgressRecord consolidateStoreProgressRecord;
+        private ProgressRecord flushStoreProgressRecord;
+        private ProgressRecord hibpImportProcessRecord;
 
         protected void InitializeProgressUpdate(string header)
         {
@@ -25,7 +21,6 @@ namespace Lithnet.ActiveDirectory.PasswordProtection.PowerShell
 
         protected void EndProgressUpdate()
         {
-
             if (this.fileReadProgressRecord != null)
             {
                 this.fileReadProgressRecord.RecordType = ProgressRecordType.Completed;
@@ -53,11 +48,18 @@ namespace Lithnet.ActiveDirectory.PasswordProtection.PowerShell
                 this.WriteProgress(this.overallRecord);
                 this.overallRecord = null;
             }
+
+            if (this.hibpImportProcessRecord != null)
+            {
+                this.hibpImportProcessRecord.RecordType = ProgressRecordType.Completed;
+                this.WriteProgress(this.hibpImportProcessRecord);
+                this.hibpImportProcessRecord = null;
+            }
         }
 
         protected void WriteProgressUpdate()
         {
-            this.overallRecord.StatusDescription = this.Progress.GetProgressText();
+            this.overallRecord.StatusDescription = $"Committed {this.Progress.HashesAdded:n0} new hashes to the store and discarded {this.Progress.HashesDiscarded:n0} duplicates";
 
             this.WriteProgress(this.overallRecord);
 
@@ -69,6 +71,7 @@ namespace Lithnet.ActiveDirectory.PasswordProtection.PowerShell
                     this.fileReadProgressRecord.ParentActivityId = 1;
                 }
 
+                this.fileReadProgressRecord.CurrentOperation = $"Read {this.Progress.LinesReadFromFile:n0} lines from file";
                 this.fileReadProgressRecord.PercentComplete = Math.Min(100, this.Progress.FileProgressPercent);
                 this.fileReadProgressRecord.SecondsRemaining = this.Progress.FileReadSecondsRemaining;
 
@@ -107,6 +110,31 @@ namespace Lithnet.ActiveDirectory.PasswordProtection.PowerShell
                 }
             }
 
+            if (this.Progress.HibpReadInProgress)
+            {
+                if (this.hibpImportProcessRecord == null)
+                {
+                    this.hibpImportProcessRecord = new ProgressRecord(5, "Downloading hash pages", "Initializing...");
+                    this.hibpImportProcessRecord.ParentActivityId = 1;
+                }
+
+                this.hibpImportProcessRecord.StatusDescription = $"Page {this.Progress.HibpCurrentHash:n0}/{this.Progress.HibpHashTotal:n0}. {this.Progress.HibpRangesUnchanged} unchanged and {this.Progress.HibpRangesChanged} changed";
+
+                this.hibpImportProcessRecord.PercentComplete = Math.Min(100, this.Progress.HibpProgressPercent);
+                this.hibpImportProcessRecord.SecondsRemaining = this.Progress.HibpSecondsRemaining;
+
+                this.WriteProgress(this.hibpImportProcessRecord);
+            }
+            else
+            {
+                if (this.hibpImportProcessRecord != null)
+                {
+                    this.hibpImportProcessRecord.RecordType = ProgressRecordType.Completed;
+                    this.WriteProgress(this.hibpImportProcessRecord);
+                    this.hibpImportProcessRecord = null;
+                }
+            }
+
             if (this.Progress.ConsolidateStoreInProgress)
             {
                 if (this.consolidateStoreProgressRecord == null)
@@ -129,7 +157,6 @@ namespace Lithnet.ActiveDirectory.PasswordProtection.PowerShell
                     this.consolidateStoreProgressRecord = null;
                 }
             }
-
         }
     }
 }

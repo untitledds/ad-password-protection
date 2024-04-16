@@ -1,15 +1,23 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Lithnet.ActiveDirectory.PasswordProtection
 {
     public static class Extensions
     {
-       public static string ToHexString(this byte[] hash)
+        public static string ToHexLppPrefixString(this int i)
+        {
+            return i.ToString("X4", CultureInfo.InvariantCulture);
+        }
+
+        public static string ToHexHibpPrefixString(this int i)
+        {
+            return i.ToString("X5", CultureInfo.InvariantCulture);
+        }
+
+        public static string ToHexString(this byte[] hash)
         {
             if (hash == null)
             {
@@ -40,7 +48,7 @@ namespace Lithnet.ActiveDirectory.PasswordProtection
 
             for (int i = offset; i < count; i++)
             {
-                sb.Append(hash[i].ToString("X2"));
+                sb.Append(hash[i].ToString("X2", CultureInfo.InvariantCulture));
             }
 
             return sb.ToString();
@@ -55,7 +63,7 @@ namespace Lithnet.ActiveDirectory.PasswordProtection
 
             if (hexHash.Length % 2 != 0)
             {
-                throw new ArgumentException($"The value supplied must be a hexadecimal representation of the hash");
+                throw new ArgumentException("The value supplied must be a hexadecimal representation of the hash");
             }
 
             int binaryLength = hexHash.Length / 2;
@@ -64,7 +72,7 @@ namespace Lithnet.ActiveDirectory.PasswordProtection
 
             for (int i = 0; i < binaryLength; i++)
             {
-                hash[i] = Convert.ToByte(hexHash.Substring((i * 2), 2), 16);
+                hash[i] = Convert.ToByte(hexHash.Substring(i * 2, 2), 16);
             }
 
             return hash;
